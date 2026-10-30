@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusPulse – Campus Event Finder and Registration Assistant</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#f4f6fb;color:#1b2a41;display:flex;min-height:100vh}
+aside{width:210px;background:#14213d;color:#cfd8ea;padding:18px 12px;flex-shrink:0}
+aside h2{color:#fff;font-size:18px;margin:0 8px 18px}aside h2 span{color:#fca311}
+aside button{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:4px}
+aside button.on,aside button:hover{background:#2f80ed;color:#fff}
+main{flex:1;padding:22px 26px;min-width:0}
+h1{font-size:22px;margin:0 0 2px}.sub{color:#667;font-size:13px;margin-bottom:16px}
+.grid{display:grid;gap:14px}.stats{grid-template-columns:repeat(4,1fr)}.two{grid-template-columns:1fr 1fr}.cards{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.card{background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 1px 4px #0001}
+.stat b{font-size:28px;display:block}.stat span{font-size:12px;color:#667}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#e6f0ff;color:#2f6fd0;margin-right:6px}
+.Cultural{background:#f3e8ff;color:#7b3fc4}.Sports{background:#e3f7ea;color:#1f8a4c}.Career{background:#fdf0e3;color:#c26a10}.Club{background:#ffe9ee;color:#c2334f}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eef0f5}.row:last-child{border:0}
+.row small,.ev small{color:#667;display:block;font-size:12px}
+.btn{background:#2f80ed;color:#fff;border:0;border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer}.btn.out{background:#fff;color:#d6334f;border:1px solid #d6334f}
+.bar{display:flex;gap:10px;margin-bottom:14px}.bar input,.bar select,textarea{border:1px solid #cfd6e4;border-radius:8px;padding:9px 12px;font:inherit;font-size:14px}.bar input{flex:1}
+.ev h3{margin:8px 0 4px;font-size:15px}.ev .btn{margin-top:10px;width:100%}
+textarea{width:100%;height:70px;resize:none}.ans{white-space:pre-line;font-size:14px;line-height:1.55}.q{font-weight:600;margin-bottom:6px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.cal div{min-height:68px;background:#fff;border-radius:8px;padding:5px 6px;font-size:12px}
+.cal .h{min-height:0;background:none;text-align:center;font-weight:600;color:#667}.cal i{display:block;font-style:normal;font-size:10px;margin-top:3px;padding:1px 4px;border-radius:4px;background:#e6f0ff;color:#2f6fd0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal i.reg{background:#2f80ed;color:#fff}.cal .today{outline:2px solid #fca311}
+@media(max-width:760px){body{flex-direction:column}aside{width:100%;display:flex;flex-wrap:wrap;gap:4px;padding:10px}aside h2{width:100%;margin:0 4px 6px}aside button{width:auto;margin:0}.stats,.two{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}main{padding:16px}}
+</style>
+</head>
+<body>
+<aside><h2>Campus<span>Pulse</span></h2><nav id="nav"></nav></aside>
+<main id="view"></main>
+<script>
+const TODAY="2026-11-03";
+const EV=[
+[1,"AI & ML Workshop","Technical","2026-11-03","10:00 AM","Seminar Hall A","Hands-on introduction to machine learning with Python."],
+[2,"Inter-College Hackathon (24h)","Technical","2026-11-06","9:00 AM","Innovation Lab","Build a working prototype in 24 hours and win prizes."],
+[3,"Cultural Night: Rang Tarang","Cultural","2026-11-07","6:00 PM","Open Air Theatre","Music, dance and drama performances by students."],
+[4,"Inter-Department Cricket Cup","Sports","2026-11-09","8:00 AM","Main Ground","Knockout tournament between all departments."],
+[5,"Resume & Interview Masterclass","Career","2026-11-10","2:00 PM","Auditorium","Tips from recruiters on resumes and interviews."],
+[6,"Photography Walk","Club","2026-11-12","4:30 PM","Campus Garden","Photography club outing; bring any camera or phone."],
+[7,"Cloud Computing Seminar","Technical","2026-11-14","11:00 AM","Seminar Hall B","Introduction to cloud platforms and career paths."],
+[8,"Entrepreneurship Talk","Career","2026-11-18","3:00 PM","Auditorium","Founders share their startup journeys."],
+[9,"Debate Competition","Cultural","2026-11-20","1:00 PM","Room C-204","Inter-class debate on technology and society."],
+[10,"Open Mic Evening","Cultural","2026-11-25","5:30 PM","Student Lounge","Poetry, stand-up and music; open to all."]
+].map(([id,title,cat,date,time,venue,desc])=>({id,title,cat,date,time,venue,desc}));
+let reg=[];try{reg=JSON.parse(localStorage.getItem("reg"));}catch(e){}
+if(!Array.isArray(reg))reg=[1,2,5];
+const save=()=>{try{localStorage.setItem("reg",JSON.stringify(reg))}catch(e){}};
+const fmt=d=>new Date(d+"T00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+const tag=c=>`<span class="tag ${c}">${c}</span>`;
+let page="dash",qText="",qCat="All",chat=[];
+const pages={dash:"Dashboard",events:"Events",bot:"Event Assistant",cal:"Calendar",mine:"My Registrations"};
+function toggle(id){reg=reg.includes(id)?reg.filter(x=>x!=id):[...reg,id];save();render();}
+function answer(q){
+ q=q.toLowerCase();const out=[];
+ const list=a=>a.map(e=>`• ${e.title} – ${fmt(e.date)}, ${e.time}, ${e.venue}`).join("\n");
+ const words={technical:"Technical",hackathon:"Technical",workshop:"Technical",coding:"Technical",cultural:"Cultural",music:"Cultural",dance:"Cultural",sports:"Sports",cricket:"Sports",career:"Career",interview:"Career",placement:"Career",club:"Club",photo:"Club"};
+ const sc=e=>e.title.toLowerCase().split(/[^a-z]+/).filter(w=>w.length>3&&q.includes(w)).length;
+ const hit=EV.map(e=>[sc(e),e]).sort((a,b)=>b[0]-a[0])[0];
+ if(hit[0]>0&&/(when|where|time|venue|details)/.test(q)){const e=hit[1];return `${e.title} is on ${fmt(e.date)} at ${e.time} in ${e.venue}. ${e.desc}`;}
+ if(/today/.test(q)){const t=EV.filter(e=>e.date==TODAY);return t.length?"Events today:\n"+list(t):"There are no events today.";}
+ if(/(my|registered|registration)/.test(q))return reg.length?"You are registered for:\n"+list(EV.filter(e=>reg.includes(e.id))):"You have not registered for any event yet.";
+ for(const w in words)if(q.includes(w)){const c=words[w];return `Here are the upcoming ${c} events:\n`+list(EV.filter(e=>e.cat==c));}
+ if(/(week|upcoming|soon|next)/.test(q))return "Coming up next:\n"+list(EV.filter(e=>e.date>=TODAY).slice(0,4));
+ return "I can help with questions like “Which technical events are coming up?”, “Where is the cricket cup?” or “What am I registered for?”.";
+}
+function ask(){const t=document.getElementById("qi").value.trim();if(!t){alert("Please type a question first.");return;}chat.unshift({q:t,a:answer(t)});render();}
+function render(){
+ document.getElementById("nav").innerHTML=Object.entries(pages).map(([k,v])=>`<button class="${k==page?"on":""}" onclick="page='${k}';render()">${v}</button>`).join("");
+ const up=EV.filter(e=>e.date>=TODAY),mine=EV.filter(e=>reg.includes(e.id));
+ const evCard=e=>`<div class="card ev">${tag(e.cat)}<h3>${e.title}</h3><small>${fmt(e.date)} · ${e.time}</small><small>${e.venue}</small><p style="font-size:13px;margin:8px 0 0">${e.desc}</p><button class="btn ${reg.includes(e.id)?"out":""}" onclick="toggle(${e.id})">${reg.includes(e.id)?"Cancel registration":"Register"}</button></div>`;
+ const rowE=e=>`<div class="row"><div><b>${e.title}</b><small>${e.venue}</small></div><span class="tag">${e.date==TODAY?"Today, "+e.time:fmt(e.date)+", "+e.time}</span></div>`;
+ let h="";
+ if(page=="dash"){
+  h=`<h1>Hello, Student! 👋</h1><div class="sub">Here is your campus event overview · ${fmt(TODAY)} 2026</div>
+  <div class="grid stats"><div class="card stat"><b>${up.length}</b><span>Upcoming events</span></div><div class="card stat"><b>${mine.length}</b><span>My registrations</span></div><div class="card stat"><b>${EV.filter(e=>e.date>=TODAY&&e.date<="2026-11-09").length}</b><span>Events this week</span></div><div class="card stat"><b>${new Set(EV.map(e=>e.cat)).size}</b><span>Categories</span></div></div>
+  <div class="grid two" style="margin-top:14px"><div class="card"><h3 style="margin-top:0">My upcoming events</h3>${mine.map(rowE).join("")||"<small>No registrations yet.</small>"}</div>
+  <div class="card"><h3 style="margin-top:0">Recommended for you</h3>${up.filter(e=>!reg.includes(e.id)).slice(0,4).map(rowE).join("")}</div></div>`;
+ }else if(page=="events"){
+  const list=EV.filter(e=>(qCat=="All"||e.cat==qCat)&&(e.title+e.venue+e.desc).toLowerCase().includes(qText.toLowerCase()));
+  h=`<h1>Events</h1><div class="sub">Search, filter and register for campus events.</div>
+  <div class="bar"><input id="s" placeholder="Search events, venues…" value="${qText}" oninput="qText=this.value;render();document.getElementById('s').focus()"><select onchange="qCat=this.value;render()">${["All","Technical","Cultural","Sports","Career","Club"].map(c=>`<option ${c==qCat?"selected":""}>${c}</option>`).join("")}</select></div>
+  <div class="grid cards">${list.map(evCard).join("")||"<p>No events found.</p>"}</div>`;
+ }else if(page=="bot"){
+  h=`<h1>AI Event Assistant</h1><div class="sub">Ask about events and get instant suggestions.</div>
+  <div class="card"><textarea id="qi" placeholder="Type your question here…"></textarea><div style="text-align:right;margin-top:8px"><button class="btn" onclick="ask()">Ask</button></div></div>
+  ${chat.map(c=>`<div class="card" style="margin-top:12px"><div class="q">Q: ${c.q.replace(/</g,"&lt;")}</div><div class="ans">${c.a}</div></div>`).join("")}`;
+ }else if(page=="cal"){
+  h=`<h1>Event Calendar – November 2026</h1><div class="sub">Blue = registered. Orange outline = today.</div><div class="cal">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>`<div class="h">${d}</div>`).join("")}`;
+  for(let i=0;i<6;i++)h+="<div style='background:none'></div>";
+  for(let d=1;d<=30;d++){const k="2026-11-"+String(d).padStart(2,"0");h+=`<div class="${k==TODAY?"today":""}"><b>${d}</b>${EV.filter(e=>e.date==k).map(e=>`<i class="${reg.includes(e.id)?"reg":""}">${e.title}</i>`).join("")}</div>`;}
+  h+="</div>";
+ }else{
+  h=`<h1>My Registrations</h1><div class="sub">Events you have registered for.</div><div class="card">${mine.map(e=>`<div class="row"><div><b>${e.title}</b><small>${fmt(e.date)} · ${e.time} · ${e.venue}</small></div><div>${tag(e.cat)}<button class="btn out" onclick="toggle(${e.id})">Cancel</button></div></div>`).join("")||"<small>You have not registered for any event.</small>"}</div>`;
+ }
+ document.getElementById("view").innerHTML=h;
+}
+render();
+</script>
+</body>
+</html>
